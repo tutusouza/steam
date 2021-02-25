@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://vjs.zencdn.net/7.10.2/video-js.css" rel="stylesheet" />
+    <title>Play Video</title>
+</head>
+
+<body>
+    <h1>Player Video</h1>
+    <video id="my-video" class="video-js" controls width="640" height="264" poster="MY_VIDEO_POSTER.jpg"
+        data-setup="{}">
+        <source
+            src="/stream?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjE0MjgxNjIxLCJleHAiOjE2MTQyODQ2MjF9.BCxAbFzEE5xFvfiGUkGg3XmJF4B4dofvp7OqVOuoCvk"
+            type="video/mp4" />
+
+    </video>
+    <!-- <video width="600" controls muted="muted">
+        <source src="/stream" type="video/mp4" />
+    </video> -->
+    <script src="https://vjs.zencdn.net/7.10.2/video.min.js"></script>
+
+</body>
+
+</html>
