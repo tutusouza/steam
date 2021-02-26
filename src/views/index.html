@@ -1,4 +1,82 @@
 <!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+</head>
+
+<body>
+    <video id="my-video" class="video-js" autoplay controls width="640" height="264" data-setup="{}">
+
+    </video>
+
+    <script>
+        let video = document.querySelector( 'video' );
+
+        video.onerror = function () {
+            console.log( "Error " + video.error.code + "; details: " + video.error.message );
+        }
+        let assetURL = '/buffer';
+        // Need to be specific for Blink regarding codecs
+        // ./mp4info frag_bunny.mp4 | grep Codec
+        // let mimeCodec = 'video/webm; codecs="vorbis,vp8"';
+        let mimeCodec = "video/mp4; codecs=\"avc1.64001F,mp4a.40.2\"";
+
+        if ( 'MediaSource' in window && MediaSource.isTypeSupported( mimeCodec ) ) {
+            start()
+        } else {
+            console.error( 'Unsupported MIME type or codec: ', mimeCodec );
+        }
+
+        function start() {
+
+            // create an object, an instance of the MediaSource
+            var mediaSource = new MediaSource();
+
+            // to this `mediaSource` object add an event listener for the `sourceopen` event
+            // and run the code inside the function when `sourceopen` happens
+            mediaSource.addEventListener( 'sourceopen', function () {
+
+                var sourceBuffer = mediaSource.addSourceBuffer( mimeCodec );
+                fetchAB( assetURL, function ( buf ) {
+                    sourceBuffer.appendBuffer( buf );
+                } );
+            } );
+
+            // hey, `video` element, here is the source of the media I'd like you to play
+            // it's not a simple url, is something more complex
+            // , a `MediaSource` kind of thing
+            // and it might take you some time to be ready        
+            video.src = URL.createObjectURL( mediaSource );
+
+        }
+
+        async function fetchAB( url, cb ) {
+            try {
+                let headers = {
+                    method: 'GET',
+                    headers: {
+                        'x-access-token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjE0Mzc0MTMzLCJleHAiOjE2MTQzNzcxMzN9.d2gPl4Bv9s8wl_gUAJt8cPL-cVMEma9fF8SWtB04OvI',
+                    }
+                }
+                let response = await fetch( url, headers )
+                response.arrayBuffer().then( function ( buffer ) {
+                    cb( buffer );
+                } );
+
+            } catch ( error ) {
+                console.log( error.response )
+            }
+
+        };
+    </script>
+
+</body>
+
+
+</html>
+
+<!-- <!DOCTYPE html>
 <html lang="pt-br">
 
 <head>
@@ -18,11 +96,8 @@
             type="video/mp4" />
 
     </video>
-    <!-- <video width="600" controls muted="muted">
-        <source src="/stream" type="video/mp4" />
-    </video> -->
     <script src="https://vjs.zencdn.net/7.10.2/video.min.js"></script>
 
 </body>
 
-</html>
+</html> -->

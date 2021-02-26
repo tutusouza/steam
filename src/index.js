@@ -4,6 +4,7 @@ const { resolve } = require( "path" );
 const bodyParser = require( 'body-parser' );
 require( "dotenv-safe" ).config();
 const jwt = require( 'jsonwebtoken' );
+const verifyToken = require( "./helpers/verifyJWT" );
 
 const colours = require( "./helpers/customConsole.js" );
 
@@ -33,7 +34,8 @@ app.post( '/login', ( req, res, next ) => {
 app.get( "/stream", ( req, res ) => {
     try {
         let token = req.query.token;
-        let objJWT = jwt.verify( token, process.env.SECRET );
+        // let objJWT = jwt.verify( token, process.env.SECRET ); Verificar token
+
         const range = req.headers.range;
         const CHUNK_SIZE = 10 ** 6;
         if ( !range )
@@ -48,7 +50,7 @@ app.get( "/stream", ( req, res ) => {
         const headers = {
             "Content-Range": `bytes ${ start }-${ end }/${ fileSize }`,
             "Accept-Range": `bytes`,
-            "Content-type": `audio/mpeg`
+            "Content-type": `video/mp4`
         };
 
         res.writeHead( 206, headers );
@@ -58,11 +60,51 @@ app.get( "/stream", ( req, res ) => {
         fileStream.pipe( res );
     } catch ( error ) {
         console.log( error );
-        if ( error.message )
+        // fileStream.unpipe (res); parar o pipe, porem nao esta no mesmo fluxo
+        if ( error.message ) {
             return res.status( 400 ).send( error.message );
+
+        }
         res.status( 403 ).send( 'not ok' );
     }
 } );
+
+
+app.get( "/buffer", verifyToken, ( req, res ) => {
+    try {
+        const file = resolve( __dirname, "videos", "error_dashinit.mp4" );
+        const readStream = fs.createReadStream( file );
+        const fileSize = fs.statSync( file ).size;
+
+        const headers = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': 0,
+            'Content-Length': fileSize,
+            "Content-type": `video/mp4`
+        };
+
+        res.writeHead( 200, headers );
+        readStream.pipe( res );
+
+        readStream.on( 'data', chunk => {
+            console.log( chunk );
+        } );
+
+        readStream.on( 'open', () => {
+            console.log( 'Stream opened...' );
+        } );
+
+        readStream.on( 'end', () => {
+            console.log( 'Stream Closed...' );
+            // res.send( "ok" );
+        } );
+
+    } catch ( error ) {
+        console.log( error );
+    }
+} );
+
 
 app.listen( _serverPort, () => {
     console.clear();
@@ -70,3 +112,5 @@ app.listen( _serverPort, () => {
 } );
 
 
+//https://stackoverflow.com/questions/53226595/streaming-audio-in-node-js-with-content-range
+//https://simpl.info/mse/
