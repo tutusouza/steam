@@ -7,6 +7,7 @@ const jwt = require( 'jsonwebtoken' );
 const verifyToken = require( "./helpers/verifyJWT" );
 
 const colours = require( "./helpers/customConsole.js" );
+const { compileFunction } = require( "vm" );
 
 const app = express();
 const _serverPort = 3334;
@@ -52,6 +53,7 @@ app.get( "/stream", ( req, res ) => {
             "Accept-Range": `bytes`,
             "Content-type": `video/mp4`
         };
+        console.log( range );
 
         res.writeHead( 206, headers );
 
@@ -72,27 +74,35 @@ app.get( "/stream", ( req, res ) => {
 
 app.get( "/buffer", verifyToken, ( req, res ) => {
     try {
+        const highWaterMark = 2;
         const file = resolve( __dirname, "videos", "error_dashinit.mp4" );
-        const readStream = fs.createReadStream( file );
-        const fileSize = fs.statSync( file ).size;
+        let chunkSize = 1024 * 1024 / 10;
+
+        const readStream = fs.createReadStream( file, { start: 0, end: 2000 } );
+        const fileSize = fs.statSync( file );
+
 
         const headers = {
+            "Content-Range": `bytes ${ 0 }-${ 2000 }/${ fileSize.size }`,
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': 0,
-            'Content-Length': fileSize,
+            "Accept-Range": `bytes`,
             "Content-type": `video/mp4`
         };
 
-        res.writeHead( 200, headers );
+        res.writeHead( 206, headers );
+
         readStream.pipe( res );
 
         readStream.on( 'data', chunk => {
-            console.log( chunk );
+            // console.log( chunk );
         } );
 
         readStream.on( 'open', () => {
             console.log( 'Stream opened...' );
+            // console.log( fileSize );
+
         } );
 
         readStream.on( 'end', () => {
@@ -114,3 +124,9 @@ app.listen( _serverPort, () => {
 
 //https://stackoverflow.com/questions/53226595/streaming-audio-in-node-js-with-content-range
 //https://simpl.info/mse/
+
+
+
+//https://stackoverflow.com/questions/14108536/how-do-i-append-two-video-files-data-to-a-source-buffer-using-media-source-api
+
+//https://medium.com/canal-tech/how-video-streaming-works-on-the-web-an-introduction-7919739f7e1

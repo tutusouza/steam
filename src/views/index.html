@@ -6,26 +6,90 @@
 </head>
 
 <body>
-    <video id="my-video" class="video-js" autoplay controls width="640" height="264" data-setup="{}">
+    <video id="videoStreamBuffer" class="video-js" autoplay controls width="640" height="264" data-setup="{}" muted>
+    </video>
 
+    <video id="videoStreamBase" class="video-js" width="640" height="264" muted controls data-setup="{}">
+        <source src="/stream" type="video/mp4" />
     </video>
 
     <script>
-        let video = document.querySelector( 'video' );
+        let video = document.querySelector( '#videoStreamBuffer' );
+
+        video.addEventListener( 'progress', function () {
+            const duration = video.duration;
+            if ( duration > 0 ) {
+                for ( let i = 0; i < video.buffered.length; i++ ) {
+                    if ( video.buffered.start( video.buffered.length - 1 - i ) < video.currentTime ) {
+                        console.log( 'buffered-amount', ( ( video.buffered.end( video.buffered.length - 1 - i ) / duration ) * 100 ).toFixed( 2 ) + "%" )
+                        break;
+                    }
+                }
+            }
+        } );
+
+        video.addEventListener( 'timeupdate', function () {
+            const duration = video.duration;
+            if ( duration > 0 ) {
+                // console.log( 'progress-amount', ( ( video.currentTime / duration ) * 100 ).toFixed( 2 ) + "%" );
+            }
+        } );
+
+        video.addEventListener( 'seeked', function () {
+            let listaBuffers = [];
+            for ( i = 0; i < video.buffered.length; i++ ) {
+                let startX = video.buffered.start( i );
+                let endX = video.buffered.end( i );
+                let width = endX - startX;
+                listaBuffers.push( { start: startX, end: endX, size: width } )
+            }
+
+            let seekableEnd = video.seekable.end( video.seekable.length - 1 );
+            let played = video.played;
+            console.log( played )
+            console.log( seekableEnd )
+            console.log( listaBuffers )
+        } );
 
         video.onerror = function () {
-            console.log( "Error " + video.error.code + "; details: " + video.error.message );
+            console.error( "Error " + video.error.code + "; details: " + video.error.message );
         }
+
         let assetURL = '/buffer';
         // Need to be specific for Blink regarding codecs
         // ./mp4info frag_bunny.mp4 | grep Codec
         // let mimeCodec = 'video/webm; codecs="vorbis,vp8"';
-        let mimeCodec = "video/mp4; codecs=\"avc1.64001F,mp4a.40.2\"";
+        let mimeCodec = "video/mp4; codecs=\"avc1.640028,mp4a.40.2\"";
 
         if ( 'MediaSource' in window && MediaSource.isTypeSupported( mimeCodec ) ) {
-            start()
+            start2()
+
         } else {
             console.error( 'Unsupported MIME type or codec: ', mimeCodec );
+        }
+
+        async function start2( params ) {
+
+            let mediaSource = new MediaSource();
+            video.src = window.URL.createObjectURL( mediaSource );
+
+            mediaSource.addEventListener( 'sourceopen', async function ( e ) {
+                let bufferFile = await fetchAB( assetURL );
+                let buffer8 = new Uint8Array( bufferFile );
+                let sourceBuffer = mediaSource.addSourceBuffer( mimeCodec );
+
+                let file = new Blob( [ buffer8 ], { type: 'video/mp4' } );
+
+                let reader = new FileReader();
+
+                reader.onload = function ( e ) {
+                    sourceBuffer.appendBuffer( new Uint8Array( e.target.result ) );
+                };
+                reader.readAsArrayBuffer( file );
+
+            }, false );
+
+
         }
 
         function start() {
@@ -51,23 +115,29 @@
 
         }
 
-        async function fetchAB( url, cb ) {
-            try {
-                let headers = {
-                    method: 'GET',
-                    headers: {
-                        'x-access-token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjE0Mzc0MTMzLCJleHAiOjE2MTQzNzcxMzN9.d2gPl4Bv9s8wl_gUAJt8cPL-cVMEma9fF8SWtB04OvI',
+        async function fetchAB( url ) {
+            return new Promise( async ( resolve, reject ) => {
+                try {
+                    let headers = {
+                        method: 'GET',
+                        headers: {
+                            'Sec-Fetch-Dest': 'video',
+                            'x-access-token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjE0ODg5MTE0LCJleHAiOjE2MTQ4OTIxMTR9.jsvDQMFk643cq6Cb0S-rbzCwbvlfGlvImORwHDphvX0',
+                        }
                     }
+                    let response = await fetch( url, headers )
+
+                    if ( !response.ok )
+                        throw response
+
+                    let buffer = await response.arrayBuffer();
+
+                    resolve( buffer );
+
+                } catch ( error ) {
+                    reject( error )
                 }
-                let response = await fetch( url, headers )
-                response.arrayBuffer().then( function ( buffer ) {
-                    cb( buffer );
-                } );
-
-            } catch ( error ) {
-                console.log( error.response )
-            }
-
+            } )
         };
     </script>
 
